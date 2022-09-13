@@ -1,0 +1,61 @@
+---
+title: "Map Test"
+author: "Sam Goodson"
+date: '2022-09-12'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE}
+library(tidycensus)
+library(censusapi)
+library(sf)
+library(leaflet)
+library(tidyverse)
+```
+
+
+```{r, echo= FALSE}
+
+c_map<-read_sf('~/Redistricting/Shapefile/nyct2020_22b')
+
+nyc_counties<-c('005','047','061','081','085')
+ny_test = get_acs(
+  geography = "tract",
+  state = "NY",
+  county = nyc_counties,
+  table = "B08006")
+
+table_test<-pivot_wider(ny_test,names_from = variable, values_from = c(estimate,moe))
+
+c_map<-read_sf('~/Redistricting/Shapefile/nyct2020_22b')
+
+data_map<-left_join(c_map,table_test)
+
+data_map<-data_map%>%
+  rename('bus' = estimate_B08006_009)
+
+IHS_wgs84 <- st_transform(data_map, "+init=epsg:4326")
+
+pal <- colorNumeric(palette = "plasma", 
+                    domain = IHS_wgs84$bus)
+
+IHS_wgs84%>%
+  leaflet(width = '100%')%>%
+  addProviderTiles(provider = "CartoDB.Positron") %>%
+  addPolygons(popup = ~ str_extract(NAME, "^([^,]*)"),
+              stroke = FALSE,
+              smoothFactor = 0,
+              fillOpacity = 0.2,
+              color = ~ pal(bus))%>%
+  addLegend("bottomright", 
+            pal = pal, 
+            values = ~ bus,
+            title = "Bus Riders",
+            opacity = 1)
+```
+
